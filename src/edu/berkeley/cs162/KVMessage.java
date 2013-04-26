@@ -96,14 +96,14 @@ public class KVMessage {
 	}
 	
 	 /***
-     * Parse KVMessage from incoming network connection
-     * @param sock
+     * Parse KVMessage from socket's input stream
+     * @param sock Socket to receive from
      * @throws KVException if there is an error in parsing the message. The exception should be of type "resp and message should be :
      * a. "XML Error: Received unparseable message" - if the received message is not valid XML.
      * b. "Network Error: Could not receive data" - if there is a network error causing an incomplete parsing of the message.
      * c. "Message format incorrect" - if there message does not conform to the required specifications. Examples include incorrect message type. 
      */
-	public KVMessage(InputStream input) throws KVException {
+	public KVMessage(Socket sock) throws KVException {
 	     // TODO: implement me
 	}
 	

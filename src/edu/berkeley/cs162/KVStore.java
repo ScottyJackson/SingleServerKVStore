@@ -30,25 +30,27 @@
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package edu.berkeley.cs162;
-import java.util.Dictionary;
-import java.util.Hashtable;
+import java.util.HashMap;
+import java.util.Map;
 
 
 /**
  * This is a dummy KeyValue Store. Ideally this would go to disk, 
  * or some other backing store. For this project, we simulate the disk like 
  * system using a manual delay.
+ * 
+ * 
  *
  */
 public class KVStore implements KeyValueInterface {
-	private Dictionary<String, String> store 	= null;
+	private Map<String, String> store 	= null;
 	
 	public KVStore() {
 		resetStore();
 	}
 
 	private void resetStore() {
-		store = new Hashtable<String, String>();
+		store = new HashMap<String, String>();
 	}
 	
 	public void put(String key, String value) throws KVException {

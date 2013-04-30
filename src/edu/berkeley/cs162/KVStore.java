@@ -69,7 +69,7 @@ public class KVStore implements KeyValueInterface {
 		
 		try {
 			getDelay();
-			String retVal = this.store.get(key);
+			String retVal = store.get(key);
 			if (retVal == null) {
 			    KVMessage msg = new KVMessage("resp", "key \"" + key + "\" does not exist in store");
 			    throw new KVException(msg);
@@ -85,8 +85,11 @@ public class KVStore implements KeyValueInterface {
 
 		try {
 			delDelay();
-			if(key != null)
-				this.store.remove(key);
+			if (store.containsKey(key)) {
+				store.remove(key);	
+			} else {
+				throw new KVException(new KVMessage("resp", "key \"" + key + "\" does not exist in store"));
+			}
 		} finally {
 			AutoGrader.agStoreDelFinished(key);
 		}

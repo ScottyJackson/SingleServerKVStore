@@ -57,7 +57,6 @@ public class KVClientHandler implements NetworkHandler {
 	
 
 	private class ClientHandler implements Runnable {
-		private KVServer kvServer = null;
 		private Socket client = null;
 		
 		@Override
@@ -65,8 +64,7 @@ public class KVClientHandler implements NetworkHandler {
 		     // TODO: Implement Me!
 		}
 		
-		public ClientHandler(KVServer kvServer, Socket client) {
-			this.kvServer = kvServer;
+		public ClientHandler(Socket client) {
 			this.client = client;
 		}
 	}
@@ -76,7 +74,7 @@ public class KVClientHandler implements NetworkHandler {
 	 */
 	@Override
 	public void handle(Socket client) throws IOException {
-		Runnable r = new ClientHandler(kv_Server, client);
+		Runnable r = new ClientHandler(client);
 		try {
 			threadpool.addToQueue(r);
 		} catch (InterruptedException e) {

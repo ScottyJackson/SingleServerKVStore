@@ -1,10 +1,10 @@
 /**
- * Persistent Key-Value storage layer. Current implementation is transient, 
+ * Persistent Key-Value storage layer. Current implementation is transient,
  * but assume to be backed on disk when you do your project.
- * 
+ *
  * @author Mosharaf Chowdhury (http://www.mosharaf.com)
  * @author Prashanth Mohan (http://www.cs.berkeley.edu/~prmohan)
- * 
+ *
  * Copyright (c) 2012, University of California at Berkeley
  * All rights reserved.
  * Redistribution and use in source and binary forms, with or without
@@ -17,7 +17,7 @@
  *  * Neither the name of University of California, Berkeley nor the
  *    names of its contributors may be used to endorse or promote products
  *    derived from this software without specific prior written permission.
- *    
+ *
  *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -30,32 +30,52 @@
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package edu.berkeley.cs162;
-import java.util.HashMap;
-import java.util.Map;
+import org.w3c.dom.*;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import java.io.*;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.IntStream;
 
 
 /**
- * This is a dummy KeyValue Store. Ideally this would go to disk, 
- * or some other backing store. For this project, we simulate the disk like 
+ * This is a dummy KeyValue Store. Ideally this would go to disk,
+ * or some other backing store. For this project, we simulate the disk like
  * system using a manual delay.
- * 
- * 
+ *
+ *
  *
  */
 public class KVStore implements KeyValueInterface {
-	private Map<String, String> store 	= null;
-	
+	private Map<String, String> store = null;
+    private ReentrantReadWriteLock lock;
+
 	public KVStore() {
 		resetStore();
+        lock = new ReentrantReadWriteLock();
 	}
 
 	private void resetStore() {
 		store = new HashMap<String, String>();
 	}
-	
+
 	public void put(String key, String value) throws KVException {
 		AutoGrader.agStorePutStarted(key, value);
-		
+
 		try {
 			putDelay();
 			store.put(key, value);
@@ -63,10 +83,10 @@ public class KVStore implements KeyValueInterface {
 			AutoGrader.agStorePutFinished(key, value);
 		}
 	}
-	
+
 	public String get(String key) throws KVException {
 		AutoGrader.agStoreGetStarted(key);
-		
+
 		try {
 			getDelay();
 			String retVal = store.get(key);
@@ -79,14 +99,14 @@ public class KVStore implements KeyValueInterface {
 			AutoGrader.agStoreGetFinished(key);
 		}
 	}
-	
+
 	public void del(String key) throws KVException {
 		AutoGrader.agStoreDelStarted(key);
 
 		try {
 			delDelay();
 			if (store.containsKey(key)) {
-				store.remove(key);	
+				store.remove(key);
 			} else {
 				throw new KVException(new KVMessage("resp", "key \"" + key + "\" does not exist in store"));
 			}
@@ -94,26 +114,72 @@ public class KVStore implements KeyValueInterface {
 			AutoGrader.agStoreDelFinished(key);
 		}
 	}
-	
+
+	public ReentrantReadWriteLock getLock() {
+        return lock;
+    }
+
 	private void getDelay() {
 		AutoGrader.agStoreDelay();
 	}
-	
+
 	private void putDelay() {
 		AutoGrader.agStoreDelay();
 	}
-	
+
 	private void delDelay() {
 		AutoGrader.agStoreDelay();
 	}
-	
+
     public String toXML() {
-        // TODO: implement me
-        return null;
-    }        
+        try {
+            Element root, pairEle, keyEle, valueEle;
+
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            DocumentBuilder db = dbf.newDocumentBuilder();
+
+            Document doc = db.newDocument();
+            doc.setXmlStandalone(true);
+
+            root = doc.createElement("KVStore");
+            doc.appendChild(root);
+
+            for (Map.Entry<String, String> entry : store.entrySet()) {
+                pairEle = doc.createElement("KVPair");
+
+                keyEle = doc.createElement("Key");
+                keyEle.appendChild(doc.createTextNode(entry.getKey()));
+                valueEle = doc.createElement("Value");
+                valueEle.appendChild(doc.createTextNode(entry.getValue()));
+
+                pairEle.appendChild(keyEle);
+                pairEle.appendChild(valueEle);
+
+                root.appendChild(pairEle);
+            }
+
+            StringWriter stringWriter = new StringWriter();
+            Transformer transformer = TransformerFactory.newInstance().newTransformer();
+            transformer.transform(new DOMSource(doc), new StreamResult(stringWriter));
+            return stringWriter.toString();
+
+        } catch (ParserConfigurationException pce) {
+            pce.printStackTrace();
+            return null;
+        } catch (TransformerException tfe) {
+            tfe.printStackTrace();
+            return null;
+        }
+    }
 
     public void dumpToFile(String fileName) {
-        // TODO: implement me
+        byte data[] = this.toXML().getBytes();
+        Path file = Paths.get(fileName);
+        try {
+            Files.write(file, data);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -122,6 +188,35 @@ public class KVStore implements KeyValueInterface {
      * @param fileName the file to be read.
      */
     public void restoreFromFile(String fileName) {
-        // TODO: implement me
+        try {
+            byte data[] = Files.readAllBytes(Paths.get(fileName));
+            String storeFile = new String(data);
+            resetStore();
+
+            Node pairNode, keyNode, valueNode;
+            NodeList pairEles, children;
+
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            InputSource source = new InputSource(new StringReader(storeFile));
+
+            Document doc = dbf.newDocumentBuilder().parse(source);
+            doc.getDocumentElement().normalize();
+
+            pairEles = doc.getElementsByTagName("KVPair");
+
+            for (int i = 0; i < pairEles.getLength(); i++) {
+                pairNode = pairEles.item(i);
+                children = pairNode.getChildNodes();
+
+                keyNode = children.item(0);
+                valueNode = children.item(1);
+                String key = keyNode.getTextContent();
+                String value = valueNode.getTextContent();
+
+                store.put(key, value);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

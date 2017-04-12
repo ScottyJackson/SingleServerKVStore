@@ -30,20 +30,39 @@
  */
 package edu.berkeley.cs162;
 
+import java.util.LinkedList;
+import java.util.List;
+
 public class ThreadPool {
 	/**
 	 * Set of threads in the threadpool
 	 */
 	protected Thread threads[] = null;
+    protected LinkedList<Runnable> jobs = null;
 
 	/**
 	 * Initialize the number of threads required in the threadpool. 
 	 * 
 	 * @param size  How many threads in the thread pool.
 	 */
-	public ThreadPool(int size)
-	{      
-	    // TODO: implement me
+	public ThreadPool(int size) {
+        jobs = new LinkedList<>();
+		threads = new Thread[size];
+        System.out.println("ThreadPool: Starting Threads...");
+		for (int i = 0; i < size; i++) {
+			threads[i] = new Thread(() -> {
+				while (true) {
+					try {
+						Runnable r = getJob();
+						r.run();
+					} catch(InterruptedException e) {
+						return;
+					}
+				}
+			});
+            System.out.println("Started Thread " + i);
+            threads[i].start();
+		}
 	}
 
 	/**
@@ -52,9 +71,9 @@ public class ThreadPool {
 	 * @param r job that has to be executed asynchronously
 	 * @throws InterruptedException 
 	 */
-	public void addToQueue(Runnable r) throws InterruptedException
-	{
-	      // TODO: implement me
+	public synchronized void addToQueue(Runnable r) throws InterruptedException {
+        jobs.push(r);
+        notify();
 	}
 	
 	/** 
@@ -63,30 +82,9 @@ public class ThreadPool {
 	 * @throws InterruptedException 
 	 */
 	public synchronized Runnable getJob() throws InterruptedException {
-	      // TODO: implement me
-	    return null;
-	}
-}
-
-/**
- * The worker threads that make up the thread pool.
- */
-class WorkerThread extends Thread {
-	/**
-	 * The constructor.
-	 * 
-	 * @param o the thread pool 
-	 */
-	WorkerThread(ThreadPool o)
-	{
-	     // TODO: implement me
-	}
-
-	/**
-	 * Scan for and execute tasks.
-	 */
-	public void run()
-	{
-	      // TODO: implement me
+        while (jobs.isEmpty()) {
+            wait();
+        }
+        return jobs.pop();
 	}
 }

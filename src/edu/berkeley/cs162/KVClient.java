@@ -1,10 +1,10 @@
 /**
- * Client component for generating load for the KeyValue store. 
+ * Client component for generating load for the KeyValue store.
  * This is also used by the Master server to reach the slave nodes.
- * 
+ *
  * @author Mosharaf Chowdhury (http://www.mosharaf.com)
  * @author Prashanth Mohan (http://www.cs.berkeley.edu/~prmohan)
- * 
+ *
  * Copyright (c) 2012, University of California at Berkeley
  * All rights reserved.
  * Redistribution and use in source and binary forms, with or without
@@ -17,7 +17,7 @@
  *  * Neither the name of University of California, Berkeley nor the
  *    names of its contributors may be used to endorse or promote products
  *    derived from this software without specific prior written permission.
- *    
+ *
  *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -31,21 +31,23 @@
  */
 package edu.berkeley.cs162;
 
+import java.io.IOException;
 import java.net.Socket;
+import java.net.SocketAddress;
 
 
 /**
- * This class is used to communicate with (appropriately marshalling and unmarshalling) 
+ * This class is used to communicate with (appropriately marshalling and unmarshalling)
  * objects implementing the {@link KeyValueInterface}.
  *
- * @param <K> Java Generic type for the Key
- * @param <V> Java Generic type for the Value
  */
 public class KVClient implements KeyValueInterface {
+    private static final int MAX_KEY_SIZE = 256;
+    private static final int MAX_VAL_SIZE = 256 * 1024;
 
 	private String server = null;
 	private int port = 0;
-	
+
 	/**
 	 * @param server is the DNS reference to the Key-Value server
 	 * @param port is the port on which the Key-Value server is listening
@@ -54,26 +56,113 @@ public class KVClient implements KeyValueInterface {
 		this.server = server;
 		this.port = port;
 	}
-	
+
 	private Socket connectHost() throws KVException {
-	    // TODO: Implement Me!  
-		return null;
+	    Socket sock;
+
+        try {
+            sock = new Socket(this.server, this.port);
+            sock.setSoTimeout(20000);
+        } catch (IOException e) {
+            throw new KVException(new KVMessage("resp", "Network Error: Could not establish connection with host"));
+        }
+
+        return sock;
 	}
-	
+
 	private void closeHost(Socket sock) throws KVException {
-	    // TODO: Implement Me!
+	    try {
+            sock.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new KVException(new KVMessage("resp", "Network Error: " + e.getMessage()));
+        }
 	}
-	
+
 	public void put(String key, String value) throws KVException {
-	    // TODO: Implement Me!
+        if (key.length() > MAX_KEY_SIZE) {
+            throw new KVException(new KVMessage("resp", "Key Error: Oversized Key"));
+        }
+        if (key.length() == 0) {
+            throw new KVException(new KVMessage("resp", "Key Error: Undersized Key"));
+        }
+        if (value.length() > MAX_VAL_SIZE) {
+            throw new KVException(new KVMessage("resp", "Value Error: Oversized Value"));
+        }
+        if (value.length() == 0) {
+            throw new KVException(new KVMessage("resp", "Value Error: Undersized Values"));
+        }
+
+        Socket server = connectHost();
+
+        KVMessage message = new KVMessage("putreq");
+        message.setKey(key);
+        message.setValue(value);
+
+        System.out.println("Sending Message:");
+        System.out.println(XmlFormatter.prettyFormat(message.toXML()));
+        System.out.println();
+
+        message.sendMessage(server);
+
+        KVMessage response = new KVMessage(server);
+
+        System.out.println("Received Response:");
+        System.out.println(XmlFormatter.prettyFormat(response.toXML()));
+        System.out.println();
+
+        closeHost(server);
+
+        if (!response.getMessage().equals("Success")) {
+            throw new KVException(response);
+        }
 	}
 
 	public String get(String key) throws KVException {
-	    // TODO: Implement Me!
-	    return null;
+        Socket server = connectHost();
+
+        KVMessage message = new KVMessage("getreq");
+        message.setKey(key);
+
+        System.out.println("Sending Message:");
+        System.out.println(XmlFormatter.prettyFormat(message.toXML()));
+        System.out.println();
+
+        message.sendMessage(server);
+
+        KVMessage response = new KVMessage(server);
+
+        System.out.println("Received Response:");
+        System.out.println(XmlFormatter.prettyFormat(response.toXML()));
+        System.out.println();
+
+        closeHost(server);
+
+        return response.getValue();
 	}
-	
+
 	public void del(String key) throws KVException {
-	    // TODO: Implement Me!
-	}	
+        Socket server = connectHost();
+
+        KVMessage message = new KVMessage("delreq");
+        message.setKey(key);
+
+        System.out.println("Sending Message:");
+        System.out.println(XmlFormatter.prettyFormat(message.toXML()));
+        System.out.println();
+
+        message.sendMessage(server);
+
+        KVMessage response = new KVMessage(server);
+
+        System.out.println("Received Response:");
+        System.out.println(XmlFormatter.prettyFormat(response.toXML()));
+        System.out.println();
+
+        closeHost(server);
+
+        if (!response.getMessage().equals("Success")) {
+            throw new KVException(response);
+        }
+	}
 }

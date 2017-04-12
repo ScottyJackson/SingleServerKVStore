@@ -1,9 +1,9 @@
 /**
  * Slave Server component of a KeyValue store
- * 
+ *
  * @author Mosharaf Chowdhury (http://www.mosharaf.com)
  * @author Prashanth Mohan (http://www.cs.berkeley.edu/~prmohan)
- * 
+ *
  * Copyright (c) 2012, University of California at Berkeley
  * All rights reserved.
  * Redistribution and use in source and binary forms, with or without
@@ -16,7 +16,7 @@
  *  * Neither the name of University of California, Berkeley nor the
  *    names of its contributors may be used to endorse or promote products
  *    derived from this software without specific prior written permission.
- *    
+ *
  *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -30,21 +30,30 @@
  */
 package edu.berkeley.cs162;
 
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
+
 /**
- * This class defines the slave key value servers. Each individual KVServer 
- * would be a fully functioning Key-Value server. For Project 3, you would 
- * implement this class. For Project 4, you will have a Master Key-Value server 
- * and multiple of these slave Key-Value servers, each of them catering to a 
+ * This class defines the slave key value servers. Each individual KVServer
+ * would be a fully functioning Key-Value server. For Project 3, you would
+ * implement this class. For Project 4, you will have a Master Key-Value server
+ * and multiple of these slave Key-Value servers, each of them catering to a
  * different part of the key namespace.
  *
  */
 public class KVServer implements KeyValueInterface {
-	private KVStore dataStore = null;
+	private final KVStore dataStore;
 	private KVCache dataCache = null;
-	
+
 	private static final int MAX_KEY_SIZE = 256;
 	private static final int MAX_VAL_SIZE = 256 * 1024;
-	
+	private static final String OVERSIZED_KEY = "Key Error: Oversized Key";
+	private static final String UNDERSIZED_KEY = "Key Error: Undersized Key";
+	private static final String OVERSIZED_VALUE = "Value Error: Oversized Value";
+	private static final String UNDERSIZED_VALUE = "Value Error: Undersized Value";
+	private static final String MSG_FORMAT = "Message Format Incorrect";
+
 	/**
 	 * @param numSets number of sets in the data Cache.
 	 */
@@ -54,35 +63,135 @@ public class KVServer implements KeyValueInterface {
 
 		AutoGrader.registerKVServer(dataStore, dataCache);
 	}
-	
+
 	public void put(String key, String value) throws KVException {
 		// Must be called before anything else
 		AutoGrader.agKVServerPutStarted(key, value);
 
-		// TODO: implement me
+		checkKeySize(key);
+		checkValueSize(value);
 
-		// Must be called before return or abnormal exit
-		AutoGrader.agKVServerPutFinished(key, value);
+        WriteLock cacheWrLock = dataCache.getWriteLock(key);
+        WriteLock storeWrLock = dataStore.getLock().writeLock();
+        System.out.println("Locking StoreWriteLock");
+        storeWrLock.lock();
+        System.out.println("Locking Cache");
+        cacheWrLock.lock();
+        try {
+            System.out.printf("putting (%s -> %s)\n", key, value);
+            dataStore.put(key, value);
+            dataCache.put(key, value);
+        } finally {
+            // Must be called before return or abnormal exit
+            AutoGrader.agKVServerPutFinished(key, value);
+            System.out.println("Unlocking Cache");
+            cacheWrLock.unlock();
+            System.out.println("Unlocking StoreWriteLock");
+            storeWrLock.unlock();
+        }
 	}
-	
+
 	public String get (String key) throws KVException {
 		// Must be called before anything else
 		AutoGrader.agKVServerGetStarted(key);
 
-		// TODO: implement me
+		checkKeySize(key);
 
-		// Must be called before return or abnormal exit
-		AutoGrader.agKVServerGetFinished(key);
-		return null;
+        String result;
+
+        WriteLock cacheWrLock = dataCache.getWriteLock(key);
+        System.out.println("Locking Cache");
+        cacheWrLock.lock();
+        try {
+            result = dataCache.get(key);
+            if (result == null) {
+                System.out.println("Cache Miss: Looking in Data Store");
+
+                ReadLock storeRLock = dataStore.getLock().readLock();
+                System.out.println("Locking StoreReadLock");
+                storeRLock.lock();
+                try {
+                    result = getFromStore(key);
+                } finally {
+                    System.out.println("Unlocking StoreReadLock");
+                    storeRLock.unlock();
+                }
+                System.out.printf("putting (%s -> %s) in cache", key, result);
+                dataCache.put(key, result);
+            } else {
+                System.out.println("Cache Hit!");
+            }
+        } finally {
+            // Must be called before return or abnormal exit
+            AutoGrader.agKVServerGetFinished(key);
+            System.out.println("Unlocking Cache");
+            cacheWrLock.unlock();
+        }
+		return result;
 	}
-	
+
 	public void del (String key) throws KVException {
 		// Must be called before anything else
 		AutoGrader.agKVServerDelStarted(key);
 
-		// TODO: implement me
+        checkKeySize(key);
 
-		// Must be called before return or abnormal exit
-		AutoGrader.agKVServerDelFinished(key);
+        WriteLock cacheWrLock = dataCache.getWriteLock(key);
+        WriteLock storeWrLock = dataStore.getLock().writeLock();
+        System.out.println("Locking StoreWriteLock");
+        storeWrLock.lock();
+        System.out.println("Locking Cache");
+        cacheWrLock.lock();
+        try {
+            getFromStore(key);
+
+            dataCache.del(key);
+            dataStore.del(key);
+        } finally {
+            // Must be called before return or abnormal exit
+            AutoGrader.agKVServerDelFinished(key);
+            System.out.println("Unlocking Cache");
+            cacheWrLock.unlock();
+            System.out.println("Unlocking StoreWriteLock");
+            storeWrLock.unlock();
+        }
 	}
+
+	private String getFromStore(String key) throws KVException {
+        String value;
+        value = dataStore.get(key);
+        if (value == null) {
+            throw new KVException(new KVMessage("resp", "Key Does Not Exist"));
+        }
+
+        return value;
+    }
+
+	private void checkKeySize(String key) throws KVException {
+		if (key == null) {
+			throw new KVException(new KVMessage("resp", MSG_FORMAT));
+		}
+		if (key.length() == 0) {
+			throw new KVException(new KVMessage("resp", UNDERSIZED_KEY));
+		} else if (key.length() > MAX_KEY_SIZE) {
+			throw new KVException(new KVMessage("resp", OVERSIZED_KEY));
+		}
+	}
+
+	private void checkValueSize(String value) throws KVException {
+		if (value == null) {
+			throw new KVException(new KVMessage("resp", MSG_FORMAT));
+		}
+		if (value.length() == 0) {
+			throw new KVException(new KVMessage("resp", UNDERSIZED_VALUE));
+		} else if (value.length() > MAX_VAL_SIZE) {
+			throw new KVException(new KVMessage("resp", OVERSIZED_VALUE));
+		}
+	}
+
+	private void unlock(WriteLock lock) {
+        if (lock.isHeldByCurrentThread()) {
+            lock.unlock();
+        }
+    }
 }

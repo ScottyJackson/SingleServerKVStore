@@ -1,9 +1,9 @@
 /**
  * Handle client connections over a socket interface
- * 
+ *
  * @author Mosharaf Chowdhury (http://www.mosharaf.com)
  * @author Prashanth Mohan (http://www.cs.berkeley.edu/~prmohan)
- * 
+ *
  * Copyright (c) 2012, University of California at Berkeley
  * All rights reserved.
  * Redistribution and use in source and binary forms, with or without
@@ -16,7 +16,7 @@
  *  * Neither the name of University of California, Berkeley nor the
  *    names of its contributors may be used to endorse or promote products
  *    derived from this software without specific prior written permission.
- *    
+ *
  *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -34,16 +34,16 @@ import java.io.IOException;
 import java.net.Socket;
 
 /**
- * This NetworkHandler will asynchronously handle the socket connections. 
+ * This NetworkHandler will asynchronously handle the socket connections.
  * It uses a threadpool to ensure that none of it's methods are blocking.
  *
  */
 public class KVClientHandler implements NetworkHandler {
-	private KVServer kv_Server = null;
+	private KVServer kvServer = null;
 	private ThreadPool threadpool = null;
-	
+
 	public KVClientHandler(KVServer kvServer) {
-		initialize(kvServer, 1);
+		initialize(kvServer, 5);
 	}
 
 	public KVClientHandler(KVServer kvServer, int connections) {
@@ -51,24 +51,69 @@ public class KVClientHandler implements NetworkHandler {
 	}
 
 	private void initialize(KVServer kvServer, int connections) {
-		this.kv_Server = kvServer;
-		threadpool = new ThreadPool(connections);	
+		this.kvServer = kvServer;
+		threadpool = new ThreadPool(connections);
 	}
-	
+
 
 	private class ClientHandler implements Runnable {
-		private Socket client = null;
-		
+		private Socket client;
+
 		@Override
 		public void run() {
-		     // TODO: Implement Me!
+            System.out.println("Client Handler: Handling Client Request...");
+            KVMessage message, response;
+            try {
+                response = new KVMessage("resp");
+            } catch (KVException e) {
+                response = e.getMsg();
+                try {
+                    response.sendMessage(client);
+                    return;
+                } catch (KVException e1) { return; }
+            }
+
+            try {
+                message = new KVMessage(client);
+                System.out.println("Received Message:");
+                System.out.println(XmlFormatter.prettyFormat(message.toXML()));
+                String msgType = message.getMsgType();
+
+                switch (msgType) {
+                    case "getreq":
+                        response.setKey(message.getKey());
+                        response.setValue(kvServer.get(message.getKey()));
+                        break;
+                    case "putreq":
+                        kvServer.put(message.getKey(), message.getValue());
+                        response.setMessage("Success");
+                        break;
+                    case "delreq":
+                        kvServer.del(message.getKey());
+                        response.setMessage("Success");
+                        break;
+                    default:
+                        throw new KVException(new KVMessage("resp", "Message Format Incorrect"));
+                }
+
+            } catch (KVException e) {
+                response = e.getMsg();
+            }
+
+            try {
+                System.out.println("Sending Response back to Client:");
+                System.out.println(XmlFormatter.prettyFormat(response.toXML()));
+                response.sendMessage(client);
+            } catch (KVException e) {
+                e.printStackTrace();
+            }
 		}
-		
+
 		public ClientHandler(Socket client) {
 			this.client = client;
 		}
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see edu.berkeley.cs162.NetworkHandler#handle(java.net.Socket)
 	 */

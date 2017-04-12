@@ -1,9 +1,9 @@
 /**
- * Sample instantiation of the Key-Value server  
- * 
+ * Sample instantiation of the Key-Value server
+ *
  * @author Mosharaf Chowdhury (http://www.mosharaf.com)
  * @author Prashanth Mohan (http://www.cs.berkeley.edu/~prmohan)
- * 
+ *
  * Copyright (c) 2012, University of California at Berkeley
  * All rights reserved.
  * Redistribution and use in source and binary forms, with or without
@@ -16,7 +16,7 @@
  *  * Neither the name of University of California, Berkeley nor the
  *    names of its contributors may be used to endorse or promote products
  *    derived from this software without specific prior written permission.
- *    
+ *
  *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -40,14 +40,14 @@ import edu.berkeley.cs162.SocketServer;
 public class Server {
 	static KVServer key_server = null;
 	static SocketServer server = null;
-	
+
 	/**
 	 * @param args
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	public static void main(String[] args) throws IOException {
 		System.out.println("Binding Server:");
-		key_server = new KVServer(100, 10);
+		key_server = new KVServer(2, 1);
 		server = new SocketServer("localhost", 8080);
 		NetworkHandler handler = new KVClientHandler(key_server);
 		server.addHandler(handler);

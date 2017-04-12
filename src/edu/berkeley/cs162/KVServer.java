@@ -3,30 +3,30 @@
  *
  * @author Mosharaf Chowdhury (http://www.mosharaf.com)
  * @author Prashanth Mohan (http://www.cs.berkeley.edu/~prmohan)
- *
+ * <p>
  * Copyright (c) 2012, University of California at Berkeley
  * All rights reserved.
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- *  * Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *  * Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *  * Neither the name of University of California, Berkeley nor the
- *    names of its contributors may be used to endorse or promote products
- *    derived from this software without specific prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- *  DISCLAIMED. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
- *  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- *  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * * Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ * * Neither the name of University of California, Berkeley nor the
+ * names of its contributors may be used to endorse or promote products
+ * derived from this software without specific prior written permission.
+ * <p>
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package edu.berkeley.cs162;
 
@@ -43,33 +43,33 @@ import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
  *
  */
 public class KVServer implements KeyValueInterface {
-	private final KVStore dataStore;
-	private KVCache dataCache = null;
+    private final KVStore dataStore;
+    private KVCache dataCache = null;
 
-	private static final int MAX_KEY_SIZE = 256;
-	private static final int MAX_VAL_SIZE = 256 * 1024;
-	private static final String OVERSIZED_KEY = "Key Error: Oversized Key";
-	private static final String UNDERSIZED_KEY = "Key Error: Undersized Key";
-	private static final String OVERSIZED_VALUE = "Value Error: Oversized Value";
-	private static final String UNDERSIZED_VALUE = "Value Error: Undersized Value";
-	private static final String MSG_FORMAT = "Message Format Incorrect";
+    private static final int MAX_KEY_SIZE = 256;
+    private static final int MAX_VAL_SIZE = 256 * 1024;
+    private static final String OVERSIZED_KEY = "Key Error: Oversized Key";
+    private static final String UNDERSIZED_KEY = "Key Error: Undersized Key";
+    private static final String OVERSIZED_VALUE = "Value Error: Oversized Value";
+    private static final String UNDERSIZED_VALUE = "Value Error: Undersized Value";
+    private static final String MSG_FORMAT = "Message Format Incorrect";
 
-	/**
-	 * @param numSets number of sets in the data Cache.
-	 */
-	public KVServer(int numSets, int maxElemsPerSet) {
-		dataStore = new KVStore();
-		dataCache = new KVCache(numSets, maxElemsPerSet);
+    /**
+     * @param numSets number of sets in the data Cache.
+     */
+    public KVServer(int numSets, int maxElemsPerSet) {
+        dataStore = new KVStore();
+        dataCache = new KVCache(numSets, maxElemsPerSet);
 
-		AutoGrader.registerKVServer(dataStore, dataCache);
-	}
+        AutoGrader.registerKVServer(dataStore, dataCache);
+    }
 
-	public void put(String key, String value) throws KVException {
-		// Must be called before anything else
-		AutoGrader.agKVServerPutStarted(key, value);
+    public void put(String key, String value) throws KVException {
+        // Must be called before anything else
+        AutoGrader.agKVServerPutStarted(key, value);
 
-		checkKeySize(key);
-		checkValueSize(value);
+        checkKeySize(key);
+        checkValueSize(value);
 
         WriteLock cacheWrLock = dataCache.getWriteLock(key);
         WriteLock storeWrLock = dataStore.getLock().writeLock();
@@ -89,13 +89,13 @@ public class KVServer implements KeyValueInterface {
             System.out.println("Unlocking StoreWriteLock");
             storeWrLock.unlock();
         }
-	}
+    }
 
-	public String get (String key) throws KVException {
-		// Must be called before anything else
-		AutoGrader.agKVServerGetStarted(key);
+    public String get(String key) throws KVException {
+        // Must be called before anything else
+        AutoGrader.agKVServerGetStarted(key);
 
-		checkKeySize(key);
+        checkKeySize(key);
 
         String result;
 
@@ -127,12 +127,12 @@ public class KVServer implements KeyValueInterface {
             System.out.println("Unlocking Cache");
             cacheWrLock.unlock();
         }
-		return result;
-	}
+        return result;
+    }
 
-	public void del (String key) throws KVException {
-		// Must be called before anything else
-		AutoGrader.agKVServerDelStarted(key);
+    public void del(String key) throws KVException {
+        // Must be called before anything else
+        AutoGrader.agKVServerDelStarted(key);
 
         checkKeySize(key);
 
@@ -155,9 +155,9 @@ public class KVServer implements KeyValueInterface {
             System.out.println("Unlocking StoreWriteLock");
             storeWrLock.unlock();
         }
-	}
+    }
 
-	private String getFromStore(String key) throws KVException {
+    private String getFromStore(String key) throws KVException {
         String value;
         value = dataStore.get(key);
         if (value == null) {
@@ -167,29 +167,29 @@ public class KVServer implements KeyValueInterface {
         return value;
     }
 
-	private void checkKeySize(String key) throws KVException {
-		if (key == null) {
-			throw new KVException(new KVMessage("resp", MSG_FORMAT));
-		}
-		if (key.length() == 0) {
-			throw new KVException(new KVMessage("resp", UNDERSIZED_KEY));
-		} else if (key.length() > MAX_KEY_SIZE) {
-			throw new KVException(new KVMessage("resp", OVERSIZED_KEY));
-		}
-	}
+    private void checkKeySize(String key) throws KVException {
+        if (key == null) {
+            throw new KVException(new KVMessage("resp", MSG_FORMAT));
+        }
+        if (key.length() == 0) {
+            throw new KVException(new KVMessage("resp", UNDERSIZED_KEY));
+        } else if (key.length() > MAX_KEY_SIZE) {
+            throw new KVException(new KVMessage("resp", OVERSIZED_KEY));
+        }
+    }
 
-	private void checkValueSize(String value) throws KVException {
-		if (value == null) {
-			throw new KVException(new KVMessage("resp", MSG_FORMAT));
-		}
-		if (value.length() == 0) {
-			throw new KVException(new KVMessage("resp", UNDERSIZED_VALUE));
-		} else if (value.length() > MAX_VAL_SIZE) {
-			throw new KVException(new KVMessage("resp", OVERSIZED_VALUE));
-		}
-	}
+    private void checkValueSize(String value) throws KVException {
+        if (value == null) {
+            throw new KVException(new KVMessage("resp", MSG_FORMAT));
+        }
+        if (value.length() == 0) {
+            throw new KVException(new KVMessage("resp", UNDERSIZED_VALUE));
+        } else if (value.length() > MAX_VAL_SIZE) {
+            throw new KVException(new KVMessage("resp", OVERSIZED_VALUE));
+        }
+    }
 
-	private void unlock(WriteLock lock) {
+    private void unlock(WriteLock lock) {
         if (lock.isHeldByCurrentThread()) {
             lock.unlock();
         }

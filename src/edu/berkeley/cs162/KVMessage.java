@@ -49,8 +49,8 @@ import org.w3c.dom.*;
 import org.xml.sax.*;
 
 /**
- * This is the object that is used to generate messages the XML based messages 
- * for communication between clients and servers. 
+ * This is the object that is used to generate messages the XML based messages
+ * for communication between clients and servers.
  */
 public class KVMessage {
     private String msgType = null;
@@ -131,7 +131,7 @@ public class KVMessage {
      * @throws KVException if there is an error in parsing the message. The exception should be of type "resp and message should be :
      * a. "XML Error: Received unparseable message" - if the received message is not valid XML.
      * b. "Network Error: Could not receive data" - if there is a network error causing an incomplete parsing of the message.
-     * c. "Message format incorrect" - if there message does not conform to the required specifications. Examples include incorrect message type. 
+     * c. "Message format incorrect" - if there message does not conform to the required specifications. Examples include incorrect message type.
      */
     public KVMessage(Socket sock) throws KVException {
         ObjectInputStream in = null;
@@ -141,7 +141,7 @@ public class KVMessage {
 
         try {
             in = new ObjectInputStream(new NoCloseInputStream(sock.getInputStream()));
-            kvMsg = (String)in.readObject();
+            kvMsg = (String) in.readObject();
 
             DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
             InputSource source = new InputSource(new StringReader(kvMsg));
@@ -182,7 +182,7 @@ public class KVMessage {
             }
         } catch (IOException e) {
             throw new KVException(new KVMessage("resp", NETWORK_ERR));
-        } catch (ClassNotFoundException|ParserConfigurationException e) {
+        } catch (ClassNotFoundException | ParserConfigurationException e) {
             e.printStackTrace();
             throw new KVException(new KVMessage("resp", "Unknown Error: " + e.getMessage()));
         } catch (SAXException e) {
@@ -219,6 +219,7 @@ public class KVMessage {
 
     /**
      * Generate the XML representation for this message.
+     *
      * @return the XML String
      * @throws KVException if not enough data is available to generate a valid KV XML message
      */
@@ -266,7 +267,7 @@ public class KVMessage {
             Transformer transformer = TransformerFactory.newInstance().newTransformer();
             transformer.transform(new DOMSource(doc), new StreamResult(stringWriter));
             return stringWriter.toString();
-        } catch (ParserConfigurationException|TransformerException e) {
+        } catch (ParserConfigurationException | TransformerException e) {
             e.printStackTrace();
             return null;
         }
